@@ -84,6 +84,9 @@ DEVICE_NAME: "matrix-bot"
 - `!note list [n]`
 - `!note search <keyword>`
 - `!remind add YYYY-MM-DD HH:MM <內容>`
+- `!remind add MM-DD HH:MM <內容>`（預設今年）
+- `!remind add HH <內容>`（預設今天）
+- `!remind add HH:MM <內容>`（預設今天）
 - `!remind list`
 - `!remind cancel <id>`
 - `!remind import`（同一則訊息貼上 CSV）

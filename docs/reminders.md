@@ -2,9 +2,13 @@
 
 ## 功能
 - 新增提醒：`!remind add YYYY-MM-DD HH:MM <內容>`
+- 新增提醒：`!remind add MM-DD HH:MM <內容>`（預設今年）
+- 新增提醒：`!remind add HH <內容>`（預設今天）
+- 新增提醒：`!remind add HH:MM <內容>`（預設今天）
 - 查詢提醒：`!remind list`
 - 取消提醒：`!remind cancel <id>`
 - 匯入提醒：`!remind import` + 同訊息貼上 CSV 內容
+- 若時間早於目前時間，會拒絕建立並提示錯誤
 
 ## SQLite
 - 路徑：`DATA_PATH/reminders.db`（預設 `./data/reminders.db`）

@@ -1,9 +1,16 @@
+import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from app.reminders.time_utils import DATETIME_FORMAT, DEFAULT_TZ, format_utc_iso_to_local
 
 
 USAGE = (
     "用法:\n"
     "!remind add YYYY-MM-DD HH:MM <內容>\n"
+    "!remind add MM-DD HH:MM <內容>（預設今年）\n"
+    "!remind add HH <內容>（今天）\n"
+    "!remind add HH:MM <內容>（今天）\n"
     "!remind list\n"
     "!remind cancel <id>\n"
     "!remind import\\n"
@@ -11,11 +18,52 @@ USAGE = (
 )
 
 
+def _normalize_today_due_local(time_token: str, tz_name: str) -> str:
+    if re.fullmatch(r"\d{1,2}", time_token):
+        hour = int(time_token)
+        minute = 0
+    elif re.fullmatch(r"\d{1,2}:\d{2}", time_token):
+        hour_str, minute_str = time_token.split(":")
+        hour = int(hour_str)
+        minute = int(minute_str)
+    else:
+        raise ValueError("invalid time token")
+
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        raise ValueError("invalid time range")
+
+    today = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")
+    return f"{today} {hour:02d}:{minute:02d}"
+
+
+def _normalize_yearless_due_local(date_token: str, time_token: str, tz_name: str) -> str:
+    if not re.fullmatch(r"\d{1,2}-\d{1,2}", date_token):
+        raise ValueError("invalid date token")
+    if not re.fullmatch(r"\d{1,2}:\d{2}", time_token):
+        raise ValueError("invalid time token")
+
+    month_str, day_str = date_token.split("-")
+    hour_str, minute_str = time_token.split(":")
+    month = int(month_str)
+    day = int(day_str)
+    hour = int(hour_str)
+    minute = int(minute_str)
+    if month < 1 or month > 12:
+        raise ValueError("invalid month")
+    if day < 1 or day > 31:
+        raise ValueError("invalid day")
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        raise ValueError("invalid time range")
+
+    year = datetime.now(ZoneInfo(tz_name)).year
+    return f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}"
+
+
 async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
     if not bot.cfg.allow_todo_public and not bot._is_admin(sender):
         return
 
-    parts = body.split(maxsplit=4)
+    parts = body.split(maxsplit=2)
     if len(parts) < 2:
         await bot._send_text(room_id, USAGE)
         return
@@ -24,12 +72,31 @@ async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
     default_tz = bot.cfg.timezone or DEFAULT_TZ
 
     if action == "add":
-        if len(parts) < 5:
-            await bot._send_text(room_id, f"格式錯誤，時間格式需為 {DATETIME_FORMAT}")
+        payload = body[len("!remind add") :].strip()
+        if not payload:
+            await bot._send_text(
+                room_id,
+                f"格式錯誤，可用 {DATETIME_FORMAT}、MM-DD HH:MM、HH 或 HH:MM",
+            )
             return
         try:
-            due_local = f"{parts[2]} {parts[3]}"
-            text = parts[4].strip()
+            tokens = payload.split()
+            if len(tokens) < 2:
+                await bot._send_text(room_id, "提醒內容不可為空")
+                return
+
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", tokens[0]) and len(tokens) >= 3:
+                due_local = f"{tokens[0]} {tokens[1]}"
+                text = " ".join(tokens[2:]).strip()
+            elif re.fullmatch(r"\d{1,2}-\d{1,2}", tokens[0]) and len(tokens) >= 3:
+                due_local = _normalize_yearless_due_local(
+                    tokens[0], tokens[1], default_tz
+                )
+                text = " ".join(tokens[2:]).strip()
+            else:
+                due_local = _normalize_today_due_local(tokens[0], default_tz)
+                text = " ".join(tokens[1:]).strip()
+
             if not text:
                 await bot._send_text(room_id, "提醒內容不可為空")
                 return
@@ -42,8 +109,17 @@ async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
             )
             await bot._send_text(room_id, f"已新增提醒 #{reminder_id}")
             return
+        except ValueError:
+            await bot._send_text(
+                room_id,
+                "提醒設定失敗：請確認時間格式正確，且必須是未來時間",
+            )
+            return
         except Exception:
-            await bot._send_text(room_id, f"格式錯誤，時間格式需為 {DATETIME_FORMAT}")
+            await bot._send_text(
+                room_id,
+                f"格式錯誤，可用 {DATETIME_FORMAT}、MM-DD HH:MM、HH 或 HH:MM",
+            )
             return
 
     if action == "list":

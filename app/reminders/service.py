@@ -2,10 +2,11 @@ import asyncio
 import csv
 import io
 import logging
-from typing import Dict, List, Optional
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from app.reminders.repository import ReminderRepository
 from app.reminders.time_utils import (
+    DATETIME_FORMAT,
     DEFAULT_TZ,
     format_utc_iso_to_local,
     now_utc_iso,
@@ -15,12 +16,15 @@ from app.reminders.time_utils import (
 
 logger = logging.getLogger("matrix-bot.reminder")
 
+if TYPE_CHECKING:
+    from app.reminders.repository import ReminderRepository
+
 
 class ReminderService:
     def __init__(
         self,
         *,
-        repository: ReminderRepository,
+        repository: "ReminderRepository",
         poll_interval_seconds: int = 20,
         default_tz: str = DEFAULT_TZ,
     ):
@@ -41,7 +45,18 @@ class ReminderService:
         tz_name: Optional[str] = None,
     ) -> int:
         tz = tz_name or self.default_tz
-        due_at_utc = parse_local_to_utc_iso(due_local, tz)
+        try:
+            due_at_utc = parse_local_to_utc_iso(due_local, tz)
+        except ValueError:
+            raise ValueError(
+                f"時間格式錯誤，請使用 {DATETIME_FORMAT}、MM-DD HH:MM、HH 或 HH:MM"
+            ) from None
+
+        due_dt_utc = datetime.fromisoformat(due_at_utc)
+        now_dt_utc = datetime.now(timezone.utc)
+        if due_dt_utc <= now_dt_utc:
+            raise ValueError("提醒時間早於目前時間，請設定未來時間")
+
         return await self.repository.add(
             user_id=user_id,
             room_id=room_id,
