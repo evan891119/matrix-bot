@@ -128,9 +128,9 @@ async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
             await bot._send_text(room_id, "目前沒有待提醒事項")
             return
         lines = ["提醒清單:"]
-        for row in rows:
+        for idx, row in enumerate(rows, start=1):
             due_local = format_utc_iso_to_local(row["due_at_utc"], row["tz"])
-            lines.append(f"#{row['id']} {due_local} {row['tz']} {row['text']}")
+            lines.append(f"#{idx} {due_local} {row['tz']} {row['text']}")
         await bot._send_text(room_id, "\n".join(lines))
         return
 
@@ -139,13 +139,19 @@ async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
             await bot._send_text(room_id, "用法: !remind cancel <id>")
             return
         try:
-            reminder_id = int(parts[2])
+            display_id = int(parts[2])
         except ValueError:
             await bot._send_text(room_id, "提醒 id 必須是數字")
             return
-        ok = await bot.reminder_service.cancel_reminder(
-            reminder_id=reminder_id, user_id=sender
-        )
+        if display_id <= 0:
+            await bot._send_text(room_id, "提醒 id 必須從 1 開始")
+            return
+        rows = await bot.reminder_service.list_reminders(user_id=sender)
+        if display_id > len(rows):
+            await bot._send_text(room_id, "找不到可取消的提醒")
+            return
+        reminder_id = rows[display_id - 1]["id"]
+        ok = await bot.reminder_service.cancel_reminder(reminder_id=reminder_id, user_id=sender)
         await bot._send_text(room_id, "已取消" if ok else "找不到可取消的提醒")
         return
 
