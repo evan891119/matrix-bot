@@ -33,6 +33,7 @@ class Config:
     allow_todo_public: bool
     timezone: str
     data_path: str
+    poll_interval_seconds: int
 
 
 def load_config() -> Config:
@@ -72,4 +73,5 @@ def load_config() -> Config:
         in ("1", "true", "yes", "y"),
         timezone=get("TIMEZONE", "Asia/Taipei"),
         data_path=get("DATA_PATH", "./data"),
+        poll_interval_seconds=int(get("POLL_INTERVAL_SECONDS", 20)),
     )

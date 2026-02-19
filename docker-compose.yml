@@ -24,5 +24,6 @@ services:
       LOADAVG_AUTO_PER_CORE: "true"
       ALLOW_TODO_PUBLIC: "false"
       TIMEZONE: "Asia/Taipei"
+      POLL_INTERVAL_SECONDS: "20"
     volumes:
       - ./data:/data

@@ -22,6 +22,9 @@ from nio import (
 from app.commands import handle_note, handle_status, handle_todo
 from app.config import load_config
 from app.monitor import Monitor, MonitorConfig
+from app.reminders.commands import handle_remind
+from app.reminders.repository import ReminderRepository
+from app.reminders.service import ReminderService
 from app.storage import Storage
 
 
@@ -54,6 +57,7 @@ class MatrixBot:
             self.cfg.data_path,
             "DATA_PATH 不可寫入，請在 docker-compose.yml 掛 volume 並修正權限。",
         )
+        reminders_db_path = os.path.join(self.cfg.data_path, "reminders.db")
 
         self.auth_path = os.path.join(self.cfg.store_path, AUTH_FILE)
         self.auth = self._load_auth()
@@ -73,6 +77,11 @@ class MatrixBot:
         logger.info("STORE_PATH=%s", self.cfg.store_path)
 
         self.storage = Storage(os.path.join(self.cfg.data_path, "bot.db"))
+        self.reminder_service = ReminderService(
+            repository=ReminderRepository(reminders_db_path),
+            poll_interval_seconds=self.cfg.poll_interval_seconds,
+            default_tz=self.cfg.timezone,
+        )
         self.monitor = Monitor(
             MonitorConfig(
                 interval_sec=self.cfg.monitor_interval_sec,
@@ -140,6 +149,13 @@ class MatrixBot:
         except Exception:
             logger.exception("Failed to send message to %s", room_id)
 
+    async def _send_text_strict(self, room_id: str, message: str) -> None:
+        await self.client.room_send(
+            room_id=room_id,
+            message_type="m.room.message",
+            content={"msgtype": "m.text", "body": message},
+        )
+
     async def _send_markdown(self, room_id: str, message: str) -> None:
         await self.client.room_send(
             room_id=room_id,
@@ -187,6 +203,10 @@ class MatrixBot:
 
             if body.startswith("!note"):
                 await handle_note(self, room.room_id, event.sender, body)
+                return
+
+            if body.startswith("!remind"):
+                await handle_remind(self, room.room_id, event.sender, body)
                 return
         except Exception:
             logger.exception("Message handler error in room %s", room.room_id)
@@ -260,6 +280,7 @@ class MatrixBot:
 
     async def run(self) -> None:
         await self.storage.init()
+        await self.reminder_service.init()
         await self._login()
         await self._register_handlers()
         logger.info(
@@ -269,6 +290,7 @@ class MatrixBot:
             len(self.client.rooms),
         )
         asyncio.create_task(self._monitor_loop())
+        asyncio.create_task(self.reminder_service.run_loop(self._send_text_strict))
         await self.client.sync_forever(timeout=30000, full_state=True)
 
 

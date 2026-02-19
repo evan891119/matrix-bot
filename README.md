@@ -10,6 +10,7 @@
 - 高負載監控與告警（CPU/RAM/Disk/Loadavg，支援節流與恢復通知）
 - `!status` 顯示狀態（僅 ADMIN_USERS）
 - `!todo` / `!note` 私人待辦與筆記（預設僅 ADMIN_USERS）
+- `!remind` 提醒事項（SQLite 持久化 + 定時自動發送）
 - 自動接受邀請（僅限 invited_by 為 ADMIN_USERS）
 
 ## 專案結構
@@ -56,6 +57,7 @@ docker compose up -d --build
 - `ALLOW_TODO_PUBLIC` 預設 false
 - `TIMEZONE` 預設 Asia/Taipei
 - `DATA_PATH`（SQLite 位置，請掛 volume）
+- `POLL_INTERVAL_SECONDS`（提醒輪詢秒數，預設 `20`）
 - `BOT_ACCESS_TOKEN`（使用 access token 免密登入）
 - `BOT_DEVICE_ID`（搭配 access token）
 - `CONFIG_YAML`（可選，指定 config.yaml 路徑）
@@ -81,6 +83,12 @@ DEVICE_NAME: "matrix-bot"
 - `!note <文字>`
 - `!note list [n]`
 - `!note search <keyword>`
+- `!remind add YYYY-MM-DD HH:MM <內容>`
+- `!remind list`
+- `!remind cancel <id>`
+- `!remind import`（同一則訊息貼上 CSV）
+
+提醒功能細節請見 `docs/reminders.md`。
 
 ## E2EE 使用與注意事項
 1. 第一次讓 bot 加入加密房間後：
