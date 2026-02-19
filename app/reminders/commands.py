@@ -100,14 +100,14 @@ async def handle_remind(bot, room_id: str, sender: str, body: str) -> None:
             if not text:
                 await bot._send_text(room_id, "提醒內容不可為空")
                 return
-            reminder_id = await bot.reminder_service.add_reminder(
+            await bot.reminder_service.add_reminder(
                 user_id=sender,
                 room_id=room_id,
                 text=text,
                 due_local=due_local,
                 tz_name=default_tz,
             )
-            await bot._send_text(room_id, f"已新增提醒 #{reminder_id}")
+            await bot._send_text(room_id, "已新增提醒")
             return
         except ValueError:
             await bot._send_text(
