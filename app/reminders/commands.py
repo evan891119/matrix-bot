@@ -9,6 +9,7 @@ USAGE = (
     "用法:\n"
     "!remind add YYYY-MM-DD HH:MM <內容>\n"
     "!remind add MM-DD HH:MM <內容>（預設今年）\n"
+    "!remind add MM-DD HH <內容>（預設今年，分=00）\n"
     "!remind add HH <內容>（今天）\n"
     "!remind add HH:MM <內容>（今天）\n"
     "!remind list\n"
@@ -19,6 +20,13 @@ USAGE = (
 
 
 def _normalize_today_due_local(time_token: str, tz_name: str) -> str:
+    hour, minute = _parse_hour_minute(time_token)
+
+    today = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")
+    return f"{today} {hour:02d}:{minute:02d}"
+
+
+def _parse_hour_minute(time_token: str) -> tuple[int, int]:
     if re.fullmatch(r"\d{1,2}", time_token):
         hour = int(time_token)
         minute = 0
@@ -31,29 +39,21 @@ def _normalize_today_due_local(time_token: str, tz_name: str) -> str:
 
     if hour < 0 or hour > 23 or minute < 0 or minute > 59:
         raise ValueError("invalid time range")
-
-    today = datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")
-    return f"{today} {hour:02d}:{minute:02d}"
+    return hour, minute
 
 
 def _normalize_yearless_due_local(date_token: str, time_token: str, tz_name: str) -> str:
     if not re.fullmatch(r"\d{1,2}-\d{1,2}", date_token):
         raise ValueError("invalid date token")
-    if not re.fullmatch(r"\d{1,2}:\d{2}", time_token):
-        raise ValueError("invalid time token")
 
     month_str, day_str = date_token.split("-")
-    hour_str, minute_str = time_token.split(":")
     month = int(month_str)
     day = int(day_str)
-    hour = int(hour_str)
-    minute = int(minute_str)
+    hour, minute = _parse_hour_minute(time_token)
     if month < 1 or month > 12:
         raise ValueError("invalid month")
     if day < 1 or day > 31:
         raise ValueError("invalid day")
-    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-        raise ValueError("invalid time range")
 
     year = datetime.now(ZoneInfo(tz_name)).year
     return f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}"

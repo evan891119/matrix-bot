@@ -3,6 +3,7 @@
 ## 功能
 - 新增提醒：`!remind add YYYY-MM-DD HH:MM <內容>`
 - 新增提醒：`!remind add MM-DD HH:MM <內容>`（預設今年）
+- 新增提醒：`!remind add MM-DD HH <內容>`（預設今年，分=00）
 - 新增提醒：`!remind add HH <內容>`（預設今天）
 - 新增提醒：`!remind add HH:MM <內容>`（預設今天）
 - 查詢提醒：`!remind list`

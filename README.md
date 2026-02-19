@@ -85,6 +85,7 @@ DEVICE_NAME: "matrix-bot"
 - `!note search <keyword>`
 - `!remind add YYYY-MM-DD HH:MM <內容>`
 - `!remind add MM-DD HH:MM <內容>`（預設今年）
+- `!remind add MM-DD HH <內容>`（預設今年，分=00）
 - `!remind add HH <內容>`（預設今天）
 - `!remind add HH:MM <內容>`（預設今天）
 - `!remind list`
